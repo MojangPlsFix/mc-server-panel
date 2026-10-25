@@ -42,16 +42,16 @@ describe("SystemdControl", () => {
 
   it("queues jobs without blocking, through sudo when configured", async () => {
     const withSudo = fakeExec({});
-    await new SystemdControl(withSudo.exec, "tfg", true).stop();
+    await new SystemdControl(withSudo.exec, "minecraft", true).stop();
     const withoutSudo = fakeExec({});
-    await new SystemdControl(withoutSudo.exec, "tfg", false).restart();
-    expect(withSudo.calls).toEqual(["sudo -n systemctl --no-block stop tfg"]);
-    expect(withoutSudo.calls).toEqual(["systemctl --no-block restart tfg"]);
+    await new SystemdControl(withoutSudo.exec, "minecraft", false).restart();
+    expect(withSudo.calls).toEqual(["sudo -n systemctl --no-block stop minecraft"]);
+    expect(withoutSudo.calls).toEqual(["systemctl --no-block restart minecraft"]);
   });
 
   it("surfaces sudo/systemctl errors", async () => {
     const { exec } = fakeExec({ sudo: { code: 1, stderr: "sudo: a password is required\n" } });
-    await expect(new SystemdControl(exec, "tfg", true).start()).rejects.toThrow(
+    await expect(new SystemdControl(exec, "minecraft", true).start()).rejects.toThrow(
       new ControlError("sudo: a password is required"),
     );
   });
