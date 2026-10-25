@@ -60,12 +60,17 @@ interface StatusResponse {
 
 export function parseStatus(json: string, latencyMs: number): PingInfo {
   const status = JSON.parse(json) as StatusResponse;
+  // Modded servers (seen with Forge) answer on the game port while still loading, without
+  // version or player info. Such an answer does not mean the server is ready.
+  if (!status.version?.name || !status.players) {
+    throw new Error("Incomplete status response: the server is still starting");
+  }
   return {
-    version: status.version?.name ?? "unknown",
-    protocol: status.version?.protocol ?? -1,
+    version: status.version.name,
+    protocol: status.version.protocol ?? -1,
     motd: chatToPlain(status.description ?? ""),
-    playersOnline: status.players?.online ?? 0,
-    playersMax: status.players?.max ?? 0,
+    playersOnline: status.players.online ?? 0,
+    playersMax: status.players.max ?? 0,
     players: (status.players?.sample ?? [])
       .filter(
         (p): p is { name: string; id: string } => typeof p.name === "string" && typeof p.id === "string",

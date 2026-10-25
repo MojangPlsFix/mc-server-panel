@@ -6,7 +6,7 @@ import path from "node:path";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { chatToPlain, decodeVarInt, encodeVarInt, pingServer } from "./slp.js";
+import { chatToPlain, decodeVarInt, encodeVarInt, parseStatus, pingServer } from "./slp.js";
 
 describe("VarInt", () => {
   it.each([0, 1, 127, 128, 255, 25565, 2_097_151, 2_147_483_647, -1])("round-trips %i", (value) => {
@@ -30,6 +30,36 @@ describe("chatToPlain", () => {
       "A B C!",
     );
     expect(chatToPlain(null)).toBe("");
+  });
+});
+
+describe("parseStatus", () => {
+  it("reads a complete status response", () => {
+    const json = JSON.stringify({
+      version: { name: "1.20.1", protocol: 763 },
+      players: {
+        max: 64,
+        online: 1,
+        sample: [{ name: "Ingrid_Vale", id: "573a8f10-ebb7-33ad-8403-e81d3f2ca1ee" }],
+      },
+      description: { text: "Hello" },
+      favicon: "data:image/png;base64,AAAA",
+    });
+    expect(parseStatus(json, 12)).toEqual({
+      version: "1.20.1",
+      protocol: 763,
+      motd: "Hello",
+      playersOnline: 1,
+      playersMax: 64,
+      players: [{ name: "Ingrid_Vale", id: "573a8f10-ebb7-33ad-8403-e81d3f2ca1ee" }],
+      latencyMs: 12,
+    });
+  });
+
+  it("rejects the partial response a modded server sends while it is still loading", () => {
+    // Forge answers on the game port before startup finishes, without version or players.
+    expect(() => parseStatus(JSON.stringify({ description: { text: "" } }), 5)).toThrow(/still starting/);
+    expect(() => parseStatus(JSON.stringify({ version: { name: "1.20.1" } }), 5)).toThrow(/still starting/);
   });
 });
 
