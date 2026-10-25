@@ -53,41 +53,56 @@ No server mods, plugins or RCON are required.
    [`deploy/minecraft.service.example`](deploy/minecraft.service.example)) and allow the panel user to control
    exactly that unit with [`deploy/sudoers.example`](deploy/sudoers.example) (`visudo -f /etc/sudoers.d/mc-panel`).
 6. **Run the panel** with [`deploy/mc-panel.service`](deploy/mc-panel.service):
-   `systemctl enable --now mc-panel`, then open `http://<server>:8080`.
+   `systemctl enable --now mc-panel`, then open `http://<server>:8080`. For HTTPS see [below](#https).
 
 ## Configuration
 
 `config.json` (path from `--config`, `$MC_PANEL_CONFIG` or `./config.json`):
 
-| Key                                 | Default           | Meaning                                                      |
-| ----------------------------------- | ----------------- | ------------------------------------------------------------ |
-| `listen.host` / `listen.port`       | `0.0.0.0:8080`    | Where the panel listens                                      |
-| `server.name`                       | `Minecraft`       | Name shown in the panel                                      |
-| `server.directory`                  | —                 | Server working directory                                     |
-| `server.logDirectory`               | `logs`            | Log folder, relative to `directory`                          |
-| `server.logFile`                    | `latest.log`      | The file the server is writing                               |
-| `server.tmuxSession`                | `minecraft`       | tmux session running the server                              |
-| `server.tmuxSocket`                 | default socket    | Optional `tmux -S` socket path                               |
-| `server.address`                    | `127.0.0.1:25565` | Game address for the status ping                             |
-| `server.control.type`               | —                 | `systemd` or `tmux`                                          |
-| `server.control.unit`               | —                 | systemd: unit name                                           |
-| `server.control.sudo`               | `true`            | systemd: call `systemctl` via `sudo -n`                      |
-| `server.control.startCommand`       | —                 | tmux: command started in the session                         |
-| `server.control.stopCommand`        | `stop`            | tmux: console command for a graceful stop                    |
-| `server.control.stopTimeoutSeconds` | `120`             | tmux: kill the session if the server has not stopped by then |
-| `auth.passwordHash`                 | —                 | Written by `set-password`                                    |
-| `auth.sessionSecret`                | —                 | Written by `set-password`; changing it logs everyone out     |
-| `auth.sessionDays`                  | `30`              | Session lifetime                                             |
-| `auth.secureCookie`                 | `false`           | Set to `true` when served over HTTPS                         |
+| Key                                 | Default           | Meaning                                                                                         |
+| ----------------------------------- | ----------------- | ----------------------------------------------------------------------------------------------- |
+| `listen.host` / `listen.port`       | `0.0.0.0:8080`    | Where the panel listens                                                                         |
+| `listen.trustProxy`                 | `false`           | Reverse proxy address(es), e.g. `"127.0.0.1"`: client IPs are then taken from `X-Forwarded-For` |
+| `server.name`                       | `Minecraft`       | Name shown in the panel                                                                         |
+| `server.directory`                  | —                 | Server working directory                                                                        |
+| `server.logDirectory`               | `logs`            | Log folder, relative to `directory`                                                             |
+| `server.logFile`                    | `latest.log`      | The file the server is writing                                                                  |
+| `server.tmuxSession`                | `minecraft`       | tmux session running the server                                                                 |
+| `server.tmuxSocket`                 | default socket    | Optional `tmux -S` socket path                                                                  |
+| `server.address`                    | `127.0.0.1:25565` | Game address for the status ping                                                                |
+| `server.control.type`               | —                 | `systemd` or `tmux`                                                                             |
+| `server.control.unit`               | —                 | systemd: unit name                                                                              |
+| `server.control.sudo`               | `true`            | systemd: call `systemctl` via `sudo -n`                                                         |
+| `server.control.startCommand`       | —                 | tmux: command started in the session                                                            |
+| `server.control.stopCommand`        | `stop`            | tmux: console command for a graceful stop                                                       |
+| `server.control.stopTimeoutSeconds` | `120`             | tmux: kill the session if the server has not stopped by then                                    |
+| `auth.passwordHash`                 | —                 | Written by `set-password`                                                                       |
+| `auth.sessionSecret`                | —                 | Written by `set-password`; changing it logs everyone out                                        |
+| `auth.sessionDays`                  | `30`              | Session lifetime                                                                                |
+| `auth.secureCookie`                 | `false`           | Set to `true` when served over HTTPS                                                            |
 
 ## Security notes
 
 - Anyone logged in can run any console command (`op`, `stop`, …). Use a strong password.
-- The panel speaks plain HTTP. Keep it on your LAN/VPN, or put it behind a reverse proxy with HTTPS and set
-  `auth.secureCookie`.
+- The panel itself speaks plain HTTP. Keep it on your LAN/VPN, or serve it over [HTTPS](#https) through a reverse
+  proxy.
 - Login attempts are limited to 5 failures per 5 minutes per client. Logins, actions and console commands are
   logged to the panel's stdout (journald).
 - The sudo rule only allows `start`, `stop` and `restart` of one unit.
+
+## HTTPS
+
+Put a reverse proxy in front of the panel, for example [Caddy](https://caddyserver.com), which gets and renews
+certificates by itself. [`deploy/Caddyfile.example`](deploy/Caddyfile.example) covers both cases:
+
+- **LAN only, no domain**: Caddy's local certificate authority (`tls internal`). Install Caddy's root certificate
+  on each device that opens the panel (on Windows: `certutil -user -addstore Root root.crt`), otherwise browsers
+  warn.
+- **With a domain**: a Let's Encrypt certificate. Let's Encrypt does not issue certificates for LAN IP addresses.
+
+Then make the panel listen only locally and trust the proxy:
+`"listen": { "host": "127.0.0.1", "port": 8081, "trustProxy": "127.0.0.1" }` and `"auth": { "secureCookie": true }`.
+WebSockets work through Caddy without extra settings.
 
 ## Development
 

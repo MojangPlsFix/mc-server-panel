@@ -44,13 +44,9 @@ let logDir: string;
 let monitor: FakeMonitor;
 let sent: string[];
 
-beforeEach(async () => {
-  logDir = mkdtempSync(path.join(os.tmpdir(), "mcp-app-"));
-  writeFileSync(path.join(logDir, "latest.log"), "one\ntwo\n");
-  monitor = new FakeMonitor();
-  sent = [];
+async function createApp(trustProxy: Config["listen"]["trustProxy"] = false): Promise<FastifyInstance> {
   const config = {
-    listen: { host: "127.0.0.1", port: 0 },
+    listen: { host: "127.0.0.1", port: 0, trustProxy },
     server: { name: "Test", logFile: "latest.log" },
     auth: {
       passwordHash: await hashPassword(PASSWORD),
@@ -67,7 +63,15 @@ beforeEach(async () => {
     logDirectory: logDir,
     limiter: new LoginLimiter(3, 60_000),
   };
-  app = await buildApp(deps);
+  return buildApp(deps);
+}
+
+beforeEach(async () => {
+  logDir = mkdtempSync(path.join(os.tmpdir(), "mcp-app-"));
+  writeFileSync(path.join(logDir, "latest.log"), "one\ntwo\n");
+  monitor = new FakeMonitor();
+  sent = [];
+  app = await createApp();
 });
 
 afterEach(async () => {
@@ -168,6 +172,33 @@ describe("authentication", () => {
     });
     expect(blocked.statusCode).toBe(429);
     expect(Number(blocked.headers["retry-after"])).toBeGreaterThan(0);
+  });
+
+  describe("behind a reverse proxy", () => {
+    const loginFrom = (target: FastifyInstance, forwardedFor: string, password = "nope") =>
+      target.inject({
+        method: "POST",
+        url: "/api/auth/login",
+        remoteAddress: "127.0.0.1",
+        headers: { "x-forwarded-for": forwardedFor },
+        payload: { password },
+      });
+
+    it("limits each client separately when the proxy is trusted", async () => {
+      const proxied = await createApp("127.0.0.1");
+      try {
+        for (let i = 0; i < 3; i++) expect((await loginFrom(proxied, "192.168.1.50")).statusCode).toBe(401);
+        expect((await loginFrom(proxied, "192.168.1.50", PASSWORD)).statusCode).toBe(429);
+        expect((await loginFrom(proxied, "192.168.1.82", PASSWORD)).statusCode).toBe(204);
+      } finally {
+        await proxied.close();
+      }
+    });
+
+    it("ignores X-Forwarded-For unless the proxy is trusted, so it cannot dodge the limit", async () => {
+      for (let i = 0; i < 3; i++) expect((await loginFrom(app, `10.0.0.${i}`)).statusCode).toBe(401);
+      expect((await loginFrom(app, "10.0.0.99", PASSWORD)).statusCode).toBe(429);
+    });
   });
 
   it("rejects forged cookies", async () => {

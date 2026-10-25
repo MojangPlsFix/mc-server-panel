@@ -1,0 +1,30 @@
+# HTTPS in front of the panel with Caddy (https://caddyserver.com), e.g. /etc/caddy/Caddyfile.
+# Panel config for this setup (/etc/mc-panel/config.json):
+#   "listen": { "host": "127.0.0.1", "port": 8081, "trustProxy": "127.0.0.1" }
+#   "auth":   { ..., "secureCookie": true }
+# The panel then only accepts connections from Caddy on the same machine.
+
+{
+	# Caddy runs unprivileged and cannot add its CA to the system trust store; that is not needed here.
+	skip_install_trust
+}
+
+# A) LAN only, no domain: Caddy's own certificate authority issues the certificate (for an IP address or a
+#    local name). Browsers trust it once Caddy's root certificate is installed on the device:
+#    /var/lib/caddy/.local/share/caddy/pki/authorities/local/root.crt
+192.168.1.10 {
+	tls internal
+	reverse_proxy 127.0.0.1:8081
+}
+
+# B) With a domain: a Let's Encrypt certificate, obtained automatically. Either the name must be reachable
+#    from the internet on ports 80/443, or use a DNS challenge (needs a Caddy build with your DNS provider's
+#    plugin). Replace block A with:
+# panel.example.com {
+# 	reverse_proxy 127.0.0.1:8081
+# }
+
+# Optional: send the old plain-HTTP address http://<server>:8080 to HTTPS.
+http://:8080 {
+	redir https://{host}{uri} permanent
+}

@@ -25,6 +25,11 @@ export const ConfigSchema = z.object({
     .object({
       host: z.string().default("0.0.0.0"),
       port: z.number().int().min(1).max(65535).default(8080),
+      /**
+       * Behind a reverse proxy: the proxy's address(es), e.g. "127.0.0.1", so logs and the login limit see the
+       * real client IP from X-Forwarded-For. Only trust addresses that are actually your proxy.
+       */
+      trustProxy: z.union([z.boolean(), z.string()]).default(false),
     })
     .prefault({}),
   server: z.object({

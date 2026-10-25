@@ -51,6 +51,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     // Requests are not logged; logins, actions and console commands are logged explicitly below.
     logController: new LogController({ disableRequestLogging: true }),
     bodyLimit: 16 * 1024,
+    trustProxy: config.listen.trustProxy,
   });
 
   await app.register(cookie);
