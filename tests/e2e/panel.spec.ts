@@ -165,8 +165,17 @@ test("uses a password changed with set-password once the panel restarts", async 
     "/opt/panel/server.js",
     "set-password",
   ]);
+  // `restart` keeps the container (and its config). Don't use `up --wait` here: some Compose versions recreate
+  // the container, which brings back the initial config.
   execFileSync("docker", [...compose, "restart", "panel"]);
-  execFileSync("docker", [...compose, "up", "--detach", "--wait"]); // until healthy again
+  await expect
+    .poll(() =>
+      page.request.get("/api/health").then(
+        (response) => response.status(),
+        () => 0,
+      ),
+    )
+    .toBe(200);
 
   await page.goto("/");
   await page.getByLabel("Password").fill(PASSWORD);
