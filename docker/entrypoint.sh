@@ -1,7 +1,9 @@
 #!/bin/sh
-# Writes a sandbox config (tmux control + fake server), sets the password, starts the panel.
+# On the container's first start: writes a sandbox config (tmux control + fake server) and sets the
+# password. Later starts (docker compose restart) keep the config, like a real install would.
 set -eu
 
+if [ ! -f "$MC_PANEL_CONFIG" ]; then
 cat > "$MC_PANEL_CONFIG" <<EOF
 {
   "listen": { "host": "0.0.0.0", "port": 8080 },
@@ -20,4 +22,6 @@ cat > "$MC_PANEL_CONFIG" <<EOF
 EOF
 
 MC_PANEL_PASSWORD="${PANEL_PASSWORD:-sandbox-password}" node /opt/panel/server.js set-password
+fi
+
 exec node /opt/panel/server.js

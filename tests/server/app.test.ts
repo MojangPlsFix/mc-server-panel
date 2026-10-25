@@ -9,10 +9,10 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import type { ServerAction, ServerState, StatusSnapshot } from "@shared/types.js";
 
-import { type AppDeps, buildApp, SESSION_COOKIE } from "./app.js";
-import { generateSecret, hashPassword, LoginLimiter } from "./auth.js";
-import type { Config } from "./config.js";
-import { ControlError } from "./control.js";
+import { type AppDeps, buildApp, SESSION_COOKIE } from "../../server/src/app.js";
+import { generateSecret, hashPassword, LoginLimiter } from "../../server/src/auth.js";
+import type { Config } from "../../server/src/config.js";
+import { ControlError } from "../../server/src/control.js";
 
 const PASSWORD = "hunter2-but-longer";
 

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { ControlError, SystemdControl, TmuxControl } from "./control.js";
-import type { Exec, ExecResult } from "./exec.js";
-import type { TmuxSession } from "./tmux.js";
+import { ControlError, SystemdControl, TmuxControl } from "../../server/src/control.js";
+import type { Exec, ExecResult } from "../../server/src/exec.js";
+import type { TmuxSession } from "../../server/src/tmux.js";
 
 function fakeExec(results: Record<string, Partial<ExecResult>>) {
   const calls: string[] = [];

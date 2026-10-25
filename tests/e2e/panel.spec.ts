@@ -1,3 +1,5 @@
+import { execFileSync } from "node:child_process";
+
 import { expect, type Page, test } from "@playwright/test";
 
 // One server, driven through its whole lifecycle: the tests depend on each other's state.
@@ -5,9 +7,9 @@ test.describe.configure({ mode: "serial" });
 
 const PASSWORD = process.env.PANEL_PASSWORD ?? "sandbox-password";
 
-async function login(page: Page) {
+async function login(page: Page, password = PASSWORD) {
   await page.goto("/");
-  await page.getByLabel("Password").fill(PASSWORD);
+  await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByRole("link", { name: "Overview" })).toBeVisible();
 }
@@ -52,6 +54,28 @@ test("runs console commands and shows their output", async ({ page }) => {
   await expect(input).toHaveValue("say hello from the end-to-end test");
   await input.press("ArrowUp");
   await expect(input).toHaveValue("list");
+});
+
+test("keeps console commands sent at the same time apart", async ({ page }) => {
+  await login(page);
+  const messages = Array.from({ length: 12 }, (_, i) => `parallel message ${i} ${"x".repeat(1 + i * 7)}`);
+  // page.request shares the logged-in browser context's cookie.
+  const responses = await Promise.all(
+    messages.map((message) => page.request.post("/api/console", { data: { command: `say ${message}` } })),
+  );
+  expect(responses.map((response) => response.status())).toEqual(messages.map(() => 204));
+
+  const said = async () => {
+    const response = await page.request.get("/api/logs/latest.log?lines=500");
+    const { lines } = (await response.json()) as { lines: string[] };
+    return lines
+      .filter((line) => line.includes("parallel message"))
+      .map((line) => line.split(": ").slice(1).join(": "));
+  };
+  // Every command runs exactly once, on its own; none merged into another or broken up.
+  await expect
+    .poll(async () => (await said()).sort())
+    .toEqual(messages.map((message) => `[Server] ${message}`).sort());
 });
 
 test("filters console output by level", async ({ page }) => {
@@ -124,4 +148,29 @@ test("logs out", async ({ page }) => {
   await page.getByRole("button", { name: "Log out" }).click();
   await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
   expect((await page.request.get("/api/status")).status()).toBe(401);
+});
+
+test("uses a password changed with set-password once the panel restarts", async ({ page }) => {
+  test.skip(Boolean(process.env.E2E_BASE_URL), "needs the Docker sandbox");
+  const compose = ["compose", "-f", "docker/compose.yml"];
+  const newPassword = "changed-sandbox-password";
+  execFileSync("docker", [
+    ...compose,
+    "exec",
+    "-T",
+    "-e",
+    `MC_PANEL_PASSWORD=${newPassword}`,
+    "panel",
+    "node",
+    "/opt/panel/server.js",
+    "set-password",
+  ]);
+  execFileSync("docker", [...compose, "restart", "panel"]);
+  execFileSync("docker", [...compose, "up", "--detach", "--wait"]); // until healthy again
+
+  await page.goto("/");
+  await page.getByLabel("Password").fill(PASSWORD);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByRole("alert")).toHaveText("Wrong password");
+  await login(page, newPassword);
 });

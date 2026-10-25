@@ -7,7 +7,7 @@ import {
   LoginLimiter,
   verifyPassword,
   verifySessionToken,
-} from "./auth.js";
+} from "../../server/src/auth.js";
 
 describe("password hashing", () => {
   it("verifies the right password and rejects others", async () => {

@@ -7,7 +7,7 @@
     "server",
     "shared",
     "tools",
-    "e2e",
+    "tests",
     "scripts",
     "vite.config.ts",
     "vitest.config.ts",

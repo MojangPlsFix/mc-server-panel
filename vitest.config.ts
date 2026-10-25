@@ -9,7 +9,7 @@ export default defineConfig({
     alias: { "@shared": path.join(root, "shared") },
   },
   test: {
-    include: ["server/**/*.test.ts", "shared/**/*.test.ts", "tools/**/*.test.ts"],
+    include: ["tests/**/*.test.ts"],
     environment: "node",
   },
 });

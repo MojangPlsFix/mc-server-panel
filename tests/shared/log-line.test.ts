@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { atLeast, groupLogLines, parseLogLine } from "./log-line.js";
+import { atLeast, groupLogLines, parseLogLine } from "../../shared/log-line.js";
 
 describe("parseLogLine", () => {
   it("parses Forge/NeoForge lines with logger name", () => {

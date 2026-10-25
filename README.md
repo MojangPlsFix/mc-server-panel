@@ -45,7 +45,10 @@ No server mods, plugins or RCON are required.
 3. **Configure**: copy [`deploy/config.systemd.example.json`](deploy/config.systemd.example.json) (or the
    [tmux-only variant](deploy/config.tmux.example.json)) to `/etc/mc-panel/config.json` and adjust it.
 4. **Set the password** (as the server user): `MC_PANEL_CONFIG=/etc/mc-panel/config.json node /opt/mc-panel/server.js set-password`.
-   This adds the password hash and a session secret to the config (file mode 0600).
+   This adds the password hash and a session secret to the config and makes the file private (mode 0600).
+   To **change** the password later, run the same command and then restart the panel
+   (`systemctl restart mc-panel`): the panel reads its config at startup, so until the restart the old password stays
+   valid. Restarting the panel does not touch the Minecraft server.
 5. **systemd only**: run the server as a unit inside tmux (see
    [`deploy/minecraft.service.example`](deploy/minecraft.service.example)) and allow the panel user to control
    exactly that unit with [`deploy/sudoers.example`](deploy/sudoers.example) (`visudo -f /etc/sudoers.d/mc-panel`).
@@ -116,7 +119,7 @@ web/src/      frontend (React, Tailwind CSS, shadcn/ui)
 shared/       types and the log-line parser used by both
 tools/        fake Minecraft server for development and tests
 docker/       sandbox image and compose file
-e2e/          Playwright end-to-end tests
+tests/        unit tests mirroring the source paths (server/, shared/) and Playwright tests (e2e/)
 deploy/       example systemd units, sudoers rule and configs
 ```
 

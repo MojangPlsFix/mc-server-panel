@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { CpuMeter, findServerProcess, parseProcStat, readHostInfo } from "./proc.js";
+import { CpuMeter, findServerProcess, parseProcStat, readHostInfo } from "../../server/src/proc.js";
 
 /** Builds a /proc/<pid>/stat line; fields after the command start at "state". */
 function statLine(pid: number, comm: string, ppid: number, utime: number, stime: number, rssPages: number) {

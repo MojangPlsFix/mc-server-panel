@@ -5,7 +5,7 @@ import { gzipSync } from "node:zlib";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { LogTailer, listLogFiles, readLogTail, resolveLogFile } from "./logs.js";
+import { LogTailer, listLogFiles, readLogTail, resolveLogFile } from "../../server/src/logs.js";
 
 let dir: string;
 beforeEach(() => {

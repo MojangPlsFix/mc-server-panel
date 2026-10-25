@@ -5,6 +5,5 @@
     "jsx": "react-jsx",
     "types": ["vite/client"]
   },
-  "include": ["web/src", "shared"],
-  "exclude": ["shared/**/*.test.ts"]
+  "include": ["web/src", "shared"]
 }

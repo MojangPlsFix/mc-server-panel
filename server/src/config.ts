@@ -1,4 +1,4 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { chmod, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
 
@@ -88,7 +88,7 @@ export function logDirectoryOf(config: Config): string {
   return path.resolve(config.server.directory, config.server.logDirectory);
 }
 
-/** Merges auth fields into the config file without touching other settings. Mode 0600. */
+/** Merges auth fields into the config file without touching other settings. The file ends up mode 0600. */
 export async function writeAuth(file: string, auth: { passwordHash: string; sessionSecret?: string }) {
   let raw: Record<string, unknown> = {};
   try {
@@ -102,5 +102,10 @@ export async function writeAuth(file: string, auth: { passwordHash: string; sess
     passwordHash: auth.passwordHash,
     sessionSecret: auth.sessionSecret ?? current.sessionSecret,
   };
+  // `mode` only applies when the file is created; an existing file (e.g. a copied 0644 example) is made
+  // private first so the credentials are never written into a readable file. chmod keeps the owner.
+  await chmod(file, 0o600).catch((err: NodeJS.ErrnoException) => {
+    if (err.code !== "ENOENT") throw err;
+  });
   await writeFile(file, JSON.stringify(raw, null, 2) + "\n", { mode: 0o600 });
 }

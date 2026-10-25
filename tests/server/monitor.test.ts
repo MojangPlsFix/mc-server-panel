@@ -4,9 +4,9 @@ import { describe, expect, it } from "vitest";
 
 import type { PingInfo } from "@shared/types.js";
 
-import { ControlError, type ServiceControl, type UnitActivity } from "./control.js";
-import type { TailerEvents } from "./logs.js";
-import { StatusMonitor } from "./monitor.js";
+import { ControlError, type ServiceControl, type UnitActivity } from "../../server/src/control.js";
+import type { TailerEvents } from "../../server/src/logs.js";
+import { StatusMonitor } from "../../server/src/monitor.js";
 
 const PING: PingInfo = {
   version: "1.20.1",

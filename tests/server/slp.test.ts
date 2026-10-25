@@ -6,7 +6,7 @@ import path from "node:path";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { chatToPlain, decodeVarInt, encodeVarInt, parseStatus, pingServer } from "./slp.js";
+import { chatToPlain, decodeVarInt, encodeVarInt, parseStatus, pingServer } from "../../server/src/slp.js";
 
 describe("VarInt", () => {
   it.each([0, 1, 127, 128, 255, 25565, 2_097_151, 2_147_483_647, -1])("round-trips %i", (value) => {

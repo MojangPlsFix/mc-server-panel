@@ -27,17 +27,15 @@ export class TmuxSession {
       throw new Error(result.stderr.trim() || `tmux new-session exited with ${result.code}`);
   }
 
-  /** Types `text` literally into the session's active pane and presses Enter. */
+  /**
+   * Types `text` literally into the session's active pane and presses Enter, as one tmux command:
+   * text and Enter sent separately let concurrent senders slip in between and merge lines.
+   * "\r" is the byte tmux sends for its Enter key.
+   */
   async sendLine(text: string): Promise<void> {
-    const pane = `${this.target}:`;
-    for (const args of [
-      ["send-keys", "-t", pane, "-l", "--", text],
-      ["send-keys", "-t", pane, "Enter"],
-    ]) {
-      const result = await this.run(args);
-      if (result.code !== 0)
-        throw new Error(result.stderr.trim() || `tmux send-keys exited with ${result.code}`);
-    }
+    const result = await this.run(["send-keys", "-t", `${this.target}:`, "-l", "--", `${text}\r`]);
+    if (result.code !== 0)
+      throw new Error(result.stderr.trim() || `tmux send-keys exited with ${result.code}`);
   }
 
   /** PID of the process running in the session's first pane. */

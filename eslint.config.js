@@ -18,7 +18,7 @@ export default tseslint.config(
       "server/**/*.ts",
       "tools/**/*.{js,mjs,ts}",
       "scripts/**/*.mjs",
-      "e2e/**/*.ts",
+      "tests/**/*.ts",
       "docker/**/*.mjs",
       "*.config.{js,ts}",
     ],

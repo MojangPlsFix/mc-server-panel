@@ -49,7 +49,10 @@ async function readPassword(): Promise<string> {
   return first;
 }
 
-/** `node server.js set-password`: stores a new password hash (and a session secret if missing). */
+/**
+ * `node server.js set-password`: stores a new password hash (and a session secret if missing).
+ * The panel reads its config at startup, so a running panel keeps the old password until restarted.
+ */
 export async function setPassword(configFile: string): Promise<void> {
   const password = await readPassword();
   if (password.length < MIN_PASSWORD_LENGTH) {
@@ -66,5 +69,9 @@ export async function setPassword(configFile: string): Promise<void> {
     passwordHash: await hashPassword(password),
     sessionSecret: hasSecret ? undefined : generateSecret(),
   });
-  stdout.write(`Password saved to ${configFile}\n`);
+  stdout.write(
+    `Password saved to ${configFile}.\n` +
+      "Restart the panel to use it, e.g. `systemctl restart mc-panel`. Until then the old password stays valid.\n" +
+      "Restarting the panel does not restart the Minecraft server.\n",
+  );
 }
