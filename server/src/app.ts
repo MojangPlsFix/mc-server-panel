@@ -32,11 +32,6 @@ const MAX_COMMAND_LENGTH = 1000;
 // Rejecting control characters is the point: a newline would inject a second console command.
 // eslint-disable-next-line no-control-regex
 const CONTROL_CHARS = /[\u0000-\u001f\u007f]/;
-const PUBLIC_API: Record<string, true> = {
-  "/api/health": true,
-  "/api/auth/login": true,
-  "/api/auth/session": true,
-};
 
 const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
@@ -70,11 +65,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     reply.header("Content-Security-Policy", CONTENT_SECURITY_POLICY);
   });
 
-  app.addHook("onRequest", async (request, reply) => {
-    const pathname = request.url.split("?")[0] ?? "";
-    if (!pathname.startsWith("/api/") || PUBLIC_API[pathname]) return;
-    if (!authenticated(request)) return reply.code(401).send({ error: "Not logged in" });
-  });
+  // --- Public routes ---------------------------------------------------------------------------
 
   app.get("/api/health", async () => ({ ok: true }));
 
@@ -125,116 +116,128 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     return reply.code(204).send();
   });
 
-  app.get("/api/status", async () => monitor.status);
+  // --- Protected routes ------------------------------------------------------------------------
+  // Authorization is attached to the routes themselves (an encapsulated scope with its own hook),
+  // not derived from request.url: the router decodes percent-encoded paths, so URL-prefix checks
+  // could be bypassed with e.g. /%61pi/status. Every route registered below requires a session.
+  await app.register(async (api) => {
+    api.addHook("onRequest", async (request, reply) => {
+      if (!authenticated(request)) return reply.code(401).send({ error: "Not logged in" });
+    });
 
-  app.post<{ Params: { action: ServerAction } }>(
-    "/api/server/:action",
-    {
-      schema: {
-        params: {
-          type: "object",
-          properties: { action: { type: "string", enum: ["start", "stop", "restart"] } },
+    api.get("/api/status", async () => monitor.status);
+
+    api.post<{ Params: { action: ServerAction } }>(
+      "/api/server/:action",
+      {
+        schema: {
+          params: {
+            type: "object",
+            properties: { action: { type: "string", enum: ["start", "stop", "restart"] } },
+          },
         },
       },
-    },
-    async (request, reply) => {
-      const { action } = request.params;
-      try {
-        await monitor.perform(action);
-      } catch (err) {
-        if (err instanceof ControlError) return reply.code(409).send({ error: err.message });
-        app.log.error({ err, action }, "server action failed");
-        return reply.code(500).send({ error: (err as Error).message });
-      }
-      app.log.info({ ip: request.ip, action }, "server action");
-      return reply.code(202).send(monitor.status);
-    },
-  );
+      async (request, reply) => {
+        const { action } = request.params;
+        try {
+          await monitor.perform(action);
+        } catch (err) {
+          if (err instanceof ControlError) return reply.code(409).send({ error: err.message });
+          app.log.error({ err, action }, "server action failed");
+          return reply.code(500).send({ error: (err as Error).message });
+        }
+        app.log.info({ ip: request.ip, action }, "server action");
+        return reply.code(202).send(monitor.status);
+      },
+    );
 
-  app.post<{ Body: { command: string } }>(
-    "/api/console",
-    {
-      schema: {
-        body: {
-          type: "object",
-          required: ["command"],
-          properties: { command: { type: "string" } },
+    api.post<{ Body: { command: string } }>(
+      "/api/console",
+      {
+        schema: {
+          body: {
+            type: "object",
+            required: ["command"],
+            properties: { command: { type: "string" } },
+          },
         },
       },
-    },
-    async (request, reply) => {
-      const command = request.body.command.trim();
-      if (!command || command.length > MAX_COMMAND_LENGTH || CONTROL_CHARS.test(command)) {
-        return reply
-          .code(400)
-          .send({ error: `Commands must be 1-${MAX_COMMAND_LENGTH} printable characters` });
-      }
-      if (!["starting", "running"].includes(monitor.status.state)) {
-        return reply.code(409).send({ error: "The server is not running" });
-      }
-      await session.sendLine(command);
-      app.log.info({ ip: request.ip, command }, "console command");
-      return reply.code(204).send();
-    },
-  );
+      async (request, reply) => {
+        const command = request.body.command.trim();
+        if (!command || command.length > MAX_COMMAND_LENGTH || CONTROL_CHARS.test(command)) {
+          return reply
+            .code(400)
+            .send({ error: `Commands must be 1-${MAX_COMMAND_LENGTH} printable characters` });
+        }
+        if (!["starting", "running"].includes(monitor.status.state)) {
+          return reply.code(409).send({ error: "The server is not running" });
+        }
+        await session.sendLine(command);
+        app.log.info({ ip: request.ip, command }, "console command");
+        return reply.code(204).send();
+      },
+    );
 
-  app.get("/api/logs", async () => listLogFiles(logDirectory, config.server.logFile));
+    api.get("/api/logs", async () => listLogFiles(logDirectory, config.server.logFile));
 
-  app.get<{ Params: { name: string }; Querystring: { lines?: number } }>(
-    "/api/logs/:name",
-    {
-      schema: {
-        querystring: {
-          type: "object",
-          properties: { lines: { type: "integer", minimum: 1, maximum: 50_000 } },
+    api.get<{ Params: { name: string }; Querystring: { lines?: number } }>(
+      "/api/logs/:name",
+      {
+        schema: {
+          querystring: {
+            type: "object",
+            properties: { lines: { type: "integer", minimum: 1, maximum: 50_000 } },
+          },
         },
       },
-    },
-    async (request, reply) => {
+      async (request, reply) => {
+        const file = await resolveLogFile(logDirectory, request.params.name);
+        if (!file) return reply.code(404).send({ error: "No such log file" });
+        return readLogTail(file, request.query.lines ?? 2000);
+      },
+    );
+
+    api.get<{ Params: { name: string } }>("/api/logs/:name/raw", async (request, reply) => {
       const file = await resolveLogFile(logDirectory, request.params.name);
       if (!file) return reply.code(404).send({ error: "No such log file" });
-      return readLogTail(file, request.query.lines ?? 2000);
-    },
-  );
+      const gzip = file.endsWith(".gz");
+      return reply
+        .header("Content-Type", gzip ? "application/gzip" : "text/plain; charset=utf-8")
+        .header("Content-Disposition", `attachment; filename="${request.params.name}"`)
+        .send(createReadStream(file));
+    });
 
-  app.get<{ Params: { name: string } }>("/api/logs/:name/raw", async (request, reply) => {
-    const file = await resolveLogFile(logDirectory, request.params.name);
-    if (!file) return reply.code(404).send({ error: "No such log file" });
-    const gzip = file.endsWith(".gz");
-    return reply
-      .header("Content-Type", gzip ? "application/gzip" : "text/plain; charset=utf-8")
-      .header("Content-Disposition", `attachment; filename="${request.params.name}"`)
-      .send(createReadStream(file));
+    api.get(
+      "/api/ws",
+      {
+        websocket: true,
+        preValidation: async (request, reply) => {
+          // Browsers always send Origin on WebSocket handshakes; refuse other sites.
+          const origin = request.headers.origin;
+          if (origin && new URL(origin).host !== request.headers.host) {
+            return reply.code(403).send({ error: "Cross-origin WebSocket refused" });
+          }
+        },
+      },
+      (socket) => {
+        const send = (message: WsMessage) => socket.send(JSON.stringify(message));
+        const onStatus = (status: StatusSnapshot) => send({ type: "status", status });
+        const onLines = (lines: string[]) => send({ type: "log", lines });
+        const onReset = () => send({ type: "log-reset" });
+        monitor.on("status", onStatus);
+        tailer.on("lines", onLines);
+        tailer.on("reset", onReset);
+        socket.on("close", () => {
+          monitor.off("status", onStatus);
+          tailer.off("lines", onLines);
+          tailer.off("reset", onReset);
+        });
+        send({ type: "hello", status: monitor.status, lines: [...tailer.recent] });
+      },
+    );
   });
 
-  app.get(
-    "/api/ws",
-    {
-      websocket: true,
-      preValidation: async (request, reply) => {
-        // Browsers always send Origin on WebSocket handshakes; refuse other sites.
-        const origin = request.headers.origin;
-        if (origin && new URL(origin).host !== request.headers.host) {
-          return reply.code(403).send({ error: "Cross-origin WebSocket refused" });
-        }
-      },
-    },
-    (socket) => {
-      const send = (message: WsMessage) => socket.send(JSON.stringify(message));
-      const onStatus = (status: StatusSnapshot) => send({ type: "status", status });
-      const onLines = (lines: string[]) => send({ type: "log", lines });
-      const onReset = () => send({ type: "log-reset" });
-      monitor.on("status", onStatus);
-      tailer.on("lines", onLines);
-      tailer.on("reset", onReset);
-      socket.on("close", () => {
-        monitor.off("status", onStatus);
-        tailer.off("lines", onLines);
-        tailer.off("reset", onReset);
-      });
-      send({ type: "hello", status: monitor.status, lines: [...tailer.recent] });
-    },
-  );
+  // --- Web UI ------------------------------------------------------------------------------------
 
   if (deps.publicDirectory) {
     await app.register(fastifyStatic, { root: deps.publicDirectory, wildcard: true });

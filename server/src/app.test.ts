@@ -1,5 +1,6 @@
 import { EventEmitter } from "node:events";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import type { AddressInfo } from "node:net";
 import os from "node:os";
 import path from "node:path";
 
@@ -103,6 +104,43 @@ describe("authentication", () => {
       authenticated: false,
       name: "Test",
     });
+  });
+
+  it("cannot be bypassed with percent-encoded or otherwise disguised paths", async () => {
+    monitor.state = "running"; // so a bypassed console request would actually be executed
+    for (const [method, url] of [
+      ["GET", "/%61pi/status"],
+      ["GET", "/%61%70%69/status"],
+      ["GET", "/api/%73tatus"],
+      ["GET", "/%61pi/logs"],
+      ["GET", "/%61pi/logs/latest.log/raw"],
+      ["POST", "/%61pi/server/start"],
+      ["POST", "/%61pi/console"],
+      ["GET", "/API/status"],
+      ["GET", "//api/status"],
+      ["GET", "/api/status/"],
+    ] as const) {
+      const response = await app.inject({
+        method,
+        url,
+        payload: method === "POST" ? { command: "op intruder" } : undefined,
+      });
+      expect([401, 404], `${method} ${url} -> ${response.statusCode}`).toContain(response.statusCode);
+    }
+    expect(monitor.actions).toEqual([]);
+    expect(sent).toEqual([]);
+  });
+
+  it("refuses WebSocket connections without a session, also on encoded paths", async () => {
+    await app.listen({ host: "127.0.0.1", port: 0 });
+    const { port } = app.server.address() as AddressInfo;
+    for (const path of ["/api/ws", "/%61pi/ws"]) {
+      const socket = new WebSocket(`ws://127.0.0.1:${port}${path}`);
+      const outcome = Promise.withResolvers<string>();
+      socket.addEventListener("message", () => outcome.resolve("message"));
+      socket.addEventListener("error", () => outcome.resolve("refused"));
+      expect(await outcome.promise, path).toBe("refused");
+    }
   });
 
   it("logs in with the right password and accepts the session cookie", async () => {
