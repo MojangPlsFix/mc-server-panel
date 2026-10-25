@@ -1,0 +1,5 @@
+# The sandbox image only needs the build output, the fake server and the entrypoint.
+*
+!dist
+!tools/fake-server
+!docker/entrypoint.sh

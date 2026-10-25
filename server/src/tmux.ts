@@ -46,7 +46,8 @@ export class TmuxSession {
   }
 
   async createdAt(): Promise<Date | null> {
-    const result = await this.run(["display-message", "-p", "-t", this.target, "#{session_created}"]);
+    // display-message takes a pane target; the bare "=name" form silently prints nothing.
+    const result = await this.run(["display-message", "-p", "-t", `${this.target}:`, "#{session_created}"]);
     const seconds = Number.parseInt(result.stdout.trim(), 10);
     return result.code === 0 && Number.isFinite(seconds) ? new Date(seconds * 1000) : null;
   }
