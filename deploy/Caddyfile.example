@@ -3,7 +3,6 @@
 #   "listen": { "host": "127.0.0.1", "port": 8081, "trustProxy": "127.0.0.1" }
 #   "auth":   { ..., "secureCookie": true }
 # The panel then only accepts connections from Caddy on the same machine.
-
 {
 	# Caddy runs unprivileged and cannot add its CA to the system trust store; that is not needed here.
 	skip_install_trust
