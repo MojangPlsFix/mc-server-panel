@@ -95,9 +95,7 @@ export function ServerControls({ status }: { status: StatusSnapshot | null }) {
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
                 onClick={() => run(action)}
-                className={
-                  action === "stop" ? "bg-destructive text-white hover:bg-destructive/90" : undefined
-                }
+                variant={action === "stop" ? "destructive" : "default"}
               >
                 {CONFIRM[action].action}
               </AlertDialogAction>

@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
 
+import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page, test } from "@playwright/test";
 
 // One server, driven through its whole lifecycle: the tests depend on each other's state.
@@ -133,9 +134,32 @@ test("browses and searches logs", async ({ page }) => {
   await expect(page.locator("mark")).toHaveText("joined");
 });
 
+async function expectReadableDialog(page: Page) {
+  const dialog = page.getByRole("alertdialog");
+  await expect(dialog).toBeVisible();
+  // Measure after the fade-in; a half-transparent dialog has lower contrast.
+  await dialog.evaluate((element) =>
+    Promise.all(
+      element
+        .getAnimations({ subtree: true })
+        .map((animation: { finished: Promise<unknown> }) => animation.finished),
+    ),
+  );
+  const { violations } = await new AxeBuilder({ page })
+    .include('[role="alertdialog"]')
+    .withRules(["color-contrast"])
+    .analyze();
+  expect(violations.flatMap((violation) => violation.nodes.map((node) => node.target.join(" ")))).toEqual([]);
+}
+
 test("stops the server", async ({ page }) => {
   await login(page);
-  await page.getByRole("button", { name: "Stop" }).click();
+  for (const theme of ["dark", "light"]) {
+    if (theme === "light") await page.getByRole("button", { name: "Light mode" }).click();
+    await page.getByRole("button", { name: "Stop" }).click();
+    await expectReadableDialog(page);
+    if (theme === "dark") await page.getByRole("alertdialog").getByRole("button", { name: "Cancel" }).click();
+  }
   await page.getByRole("alertdialog").getByRole("button", { name: "Stop server" }).click();
   await expect(serverState(page)).toHaveAttribute("data-state", "stopped", { timeout: 30_000 });
   await expect(page.getByRole("button", { name: "Start server" })).toBeVisible();
