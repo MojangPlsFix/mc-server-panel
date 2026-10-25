@@ -32,7 +32,8 @@ class FakeMonitor extends EventEmitter<{ status: [StatusSnapshot] }> {
     };
   }
   async perform(action: ServerAction) {
-    if (action === "stop" && this.state === "stopped") throw new ControlError("Cannot stop while the server is stopped");
+    if (action === "stop" && this.state === "stopped")
+      throw new ControlError("Cannot stop while the server is stopped");
     this.actions.push(action);
   }
 }
@@ -74,7 +75,11 @@ afterEach(async () => {
 });
 
 async function login(): Promise<string> {
-  const response = await app.inject({ method: "POST", url: "/api/auth/login", payload: { password: PASSWORD } });
+  const response = await app.inject({
+    method: "POST",
+    url: "/api/auth/login",
+    payload: { password: PASSWORD },
+  });
   expect(response.statusCode).toBe(204);
   const cookie = response.cookies.find((c) => c.name === SESSION_COOKIE);
   expect(cookie).toMatchObject({ httpOnly: true, sameSite: "Strict", path: "/" });
@@ -111,10 +116,18 @@ describe("authentication", () => {
 
   it("rejects wrong passwords and rate-limits repeated failures", async () => {
     for (let i = 0; i < 3; i++) {
-      const response = await app.inject({ method: "POST", url: "/api/auth/login", payload: { password: "nope" } });
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/auth/login",
+        payload: { password: "nope" },
+      });
       expect(response.statusCode).toBe(401);
     }
-    const blocked = await app.inject({ method: "POST", url: "/api/auth/login", payload: { password: PASSWORD } });
+    const blocked = await app.inject({
+      method: "POST",
+      url: "/api/auth/login",
+      payload: { password: PASSWORD },
+    });
     expect(blocked.statusCode).toBe(429);
     expect(Number(blocked.headers["retry-after"])).toBeGreaterThan(0);
   });
@@ -170,7 +183,11 @@ describe("logs", () => {
     const cookie = await login();
     const list = await app.inject({ method: "GET", url: "/api/logs", headers: { cookie } });
     expect(list.json()).toEqual([expect.objectContaining({ name: "latest.log", live: true })]);
-    const content = await app.inject({ method: "GET", url: "/api/logs/latest.log?lines=1", headers: { cookie } });
+    const content = await app.inject({
+      method: "GET",
+      url: "/api/logs/latest.log?lines=1",
+      headers: { cookie },
+    });
     expect(content.json()).toEqual({ name: "latest.log", lines: ["two"], totalLines: 2, truncated: true });
     for (const url of ["/api/logs/..%2Fsecret.log", "/api/logs/%2E%2E", "/api/logs/missing.log/raw"]) {
       expect((await app.inject({ method: "GET", url, headers: { cookie } })).statusCode, url).toBe(404);

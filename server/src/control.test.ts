@@ -29,7 +29,9 @@ describe("SystemdControl", () => {
 
   it("reports why a unit failed and drops the start time when stopped", async () => {
     const { exec } = fakeExec({
-      "systemctl show": { stdout: "ActiveState=failed\nResult=exit-code\nActiveEnterTimestamp=@1761380539\n" },
+      "systemctl show": {
+        stdout: "ActiveState=failed\nResult=exit-code\nActiveEnterTimestamp=@1761380539\n",
+      },
     });
     expect(await new SystemdControl(exec, "mc", true).status()).toEqual({
       activity: "failed",

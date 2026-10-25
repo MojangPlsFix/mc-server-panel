@@ -67,7 +67,9 @@ export function parseStatus(json: string, latencyMs: number): PingInfo {
     playersOnline: status.players?.online ?? 0,
     playersMax: status.players?.max ?? 0,
     players: (status.players?.sample ?? [])
-      .filter((p): p is { name: string; id: string } => typeof p.name === "string" && typeof p.id === "string")
+      .filter(
+        (p): p is { name: string; id: string } => typeof p.name === "string" && typeof p.id === "string",
+      )
       .map(({ name, id }) => ({ name, id })),
     latencyMs,
   };

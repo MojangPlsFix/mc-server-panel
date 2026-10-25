@@ -42,7 +42,11 @@ function stamp(date = new Date()) {
   );
 }
 
-function log(level, message, { thread = "Server thread", source = "net.minecraft.server.MinecraftServer/" } = {}) {
+function log(
+  level,
+  message,
+  { thread = "Server thread", source = "net.minecraft.server.MinecraftServer/" } = {},
+) {
   const line = `[${stamp()}] [${thread}/${level}] [${source}]: ${message}`;
   appendFileSync(latest, line + "\n");
   process.stdout.write(line + "\n");
@@ -165,7 +169,10 @@ function handle(input) {
       return log("WARN", arg);
     case "fake:error":
       log("ERROR", arg, { source: "fake.test/" });
-      appendFileSync(latest, "java.lang.IllegalStateException: " + arg + "\n\tat fake.Test.run(Test.java:42)\n");
+      appendFileSync(
+        latest,
+        "java.lang.IllegalStateException: " + arg + "\n\tat fake.Test.run(Test.java:42)\n",
+      );
       return;
     case "fake:crash":
       log("FATAL", "Simulated crash", { source: "fake.test/" });
@@ -177,9 +184,16 @@ function handle(input) {
 }
 
 rotateLatestLog();
-log("INFO", `ModLauncher running: fake server ${version}`, { thread: "main", source: "cpw.mods.modlauncher.Launcher/MODLAUNCHER" });
-log("INFO", `Starting minecraft server version ${version}`, { source: "net.minecraft.server.dedicated.DedicatedServer/" });
-log("INFO", `Starting Minecraft server on *:${port}`, { source: "net.minecraft.server.dedicated.DedicatedServer/" });
+log("INFO", `ModLauncher running: fake server ${version}`, {
+  thread: "main",
+  source: "cpw.mods.modlauncher.Launcher/MODLAUNCHER",
+});
+log("INFO", `Starting minecraft server version ${version}`, {
+  source: "net.minecraft.server.dedicated.DedicatedServer/",
+});
+log("INFO", `Starting Minecraft server on *:${port}`, {
+  source: "net.minecraft.server.dedicated.DedicatedServer/",
+});
 log("WARN", "Example warning during startup", { thread: "main", source: "fake.startup/" });
 
 readline.createInterface({ input: process.stdin }).on("line", (input) => {

@@ -8,7 +8,30 @@ import { CpuMeter, findServerProcess, parseProcStat, readHostInfo } from "./proc
 
 /** Builds a /proc/<pid>/stat line; fields after the command start at "state". */
 function statLine(pid: number, comm: string, ppid: number, utime: number, stime: number, rssPages: number) {
-  const fields = ["S", ppid, 1, 1, 0, -1, 4194304, 0, 0, 0, 0, utime, stime, 0, 0, 20, 0, 1, 0, 100, 1000, rssPages];
+  const fields = [
+    "S",
+    ppid,
+    1,
+    1,
+    0,
+    -1,
+    4194304,
+    0,
+    0,
+    0,
+    0,
+    utime,
+    stime,
+    0,
+    0,
+    20,
+    0,
+    1,
+    0,
+    100,
+    1000,
+    rssPages,
+  ];
   return `${pid} (${comm}) ${fields.join(" ")}`;
 }
 
@@ -66,8 +89,14 @@ describe("CpuMeter", () => {
 describe("readHostInfo", () => {
   it("reads total and available memory", async () => {
     const root = mkdtempSync(path.join(os.tmpdir(), "mcp-mem-"));
-    writeFileSync(path.join(root, "meminfo"), "MemTotal:        8388608 kB\nMemFree: 1 kB\nMemAvailable:    1048576 kB\n");
-    expect(await readHostInfo(root)).toMatchObject({ memTotalBytes: 8 * 1024 ** 3, memAvailableBytes: 1024 ** 3 });
+    writeFileSync(
+      path.join(root, "meminfo"),
+      "MemTotal:        8388608 kB\nMemFree: 1 kB\nMemAvailable:    1048576 kB\n",
+    );
+    expect(await readHostInfo(root)).toMatchObject({
+      memTotalBytes: 8 * 1024 ** 3,
+      memAvailableBytes: 1024 ** 3,
+    });
     rmSync(root, { recursive: true, force: true });
   });
 });

@@ -1,0 +1,4 @@
+# Lets the panel user start, stop and restart exactly one systemd unit, nothing else.
+# Install with: visudo -f /etc/sudoers.d/mc-panel   (replace "minecraft" with your user and unit)
+# The panel always calls: sudo -n systemctl --no-block <start|stop|restart> <unit>
+minecraft ALL=(root) NOPASSWD: /usr/bin/systemctl --no-block start minecraft, /usr/bin/systemctl --no-block stop minecraft, /usr/bin/systemctl --no-block restart minecraft

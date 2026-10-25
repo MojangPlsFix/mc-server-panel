@@ -39,7 +39,9 @@ async function readPassword(): Promise<string> {
   if (!stdin.isTTY) {
     const chunks: Buffer[] = [];
     for await (const chunk of stdin) chunks.push(chunk as Buffer);
-    return Buffer.concat(chunks).toString("utf8").replace(/\r?\n$/, "");
+    return Buffer.concat(chunks)
+      .toString("utf8")
+      .replace(/\r?\n$/, "");
   }
   const first = await promptHidden("New panel password: ");
   const second = await promptHidden("Repeat password: ");

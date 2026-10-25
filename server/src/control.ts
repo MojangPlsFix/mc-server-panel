@@ -64,7 +64,8 @@ export class SystemdControl implements ServiceControl {
     return {
       activity,
       since: running && entered?.[1] ? new Date(Number(entered[1]) * 1000) : null,
-      detail: activity === "failed" ? `systemd unit failed (result: ${props.get("Result") ?? "unknown"})` : null,
+      detail:
+        activity === "failed" ? `systemd unit failed (result: ${props.get("Result") ?? "unknown"})` : null,
     };
   }
 

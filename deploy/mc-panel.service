@@ -1,0 +1,20 @@
+# systemd unit for the panel. Runs as the same user as the Minecraft server so it can
+# reach the server's tmux session and read its logs.
+# Install: copy to /etc/systemd/system/mc-panel.service, adjust User/paths, then
+#   systemctl daemon-reload && systemctl enable --now mc-panel
+[Unit]
+Description=Minecraft server panel
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=minecraft
+Environment=MC_PANEL_CONFIG=/etc/mc-panel/config.json
+ExecStart=/usr/bin/node /opt/mc-panel/server.js
+Restart=on-failure
+RestartSec=5
+# Do not set NoNewPrivileges=true: the panel needs sudo for systemctl when control.sudo is true.
+
+[Install]
+WantedBy=multi-user.target

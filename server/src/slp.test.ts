@@ -26,7 +26,9 @@ describe("VarInt", () => {
 describe("chatToPlain", () => {
   it("flattens components and strips formatting codes", () => {
     expect(chatToPlain("§aGreen §lbold")).toBe("Green bold");
-    expect(chatToPlain({ text: "A ", extra: [{ text: "B" }, " C", { extra: [{ text: "!" }] }] })).toBe("A B C!");
+    expect(chatToPlain({ text: "A ", extra: [{ text: "B" }, " C", { extra: [{ text: "!" }] }] })).toBe(
+      "A B C!",
+    );
     expect(chatToPlain(null)).toBe("");
   });
 });
@@ -64,7 +66,13 @@ describe("pingServer against the fake server", () => {
     port = await freePort();
     dir = mkdtempSync(path.join(os.tmpdir(), "mcp-slp-"));
     fake = spawn(process.execPath, [path.resolve("tools/fake-server/fake-server.mjs")], {
-      env: { ...process.env, FAKE_DIR: dir, FAKE_PORT: String(port), FAKE_STARTUP_MS: "50", FAKE_MOTD: "§bTest MOTD" },
+      env: {
+        ...process.env,
+        FAKE_DIR: dir,
+        FAKE_PORT: String(port),
+        FAKE_STARTUP_MS: "50",
+        FAKE_MOTD: "§bTest MOTD",
+      },
     });
     await waitForOutput(fake, "Done (");
   });

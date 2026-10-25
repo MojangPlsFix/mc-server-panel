@@ -1,0 +1,12 @@
+{
+  "listen": { "host": "0.0.0.0", "port": 8080 },
+  "server": {
+    "name": "My Minecraft Server",
+    "directory": "/opt/minecraft",
+    "logDirectory": "logs",
+    "logFile": "latest.log",
+    "tmuxSession": "minecraft",
+    "address": { "host": "127.0.0.1", "port": 25565 },
+    "control": { "type": "systemd", "unit": "minecraft", "sudo": true }
+  }
+}

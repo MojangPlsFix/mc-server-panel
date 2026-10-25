@@ -29,6 +29,8 @@ export interface AppDeps {
 
 export const SESSION_COOKIE = "mcp_session";
 const MAX_COMMAND_LENGTH = 1000;
+// Rejecting control characters is the point: a newline would inject a second console command.
+// eslint-disable-next-line no-control-regex
 const CONTROL_CHARS = /[\u0000-\u001f\u007f]/;
 const PUBLIC_API: Record<string, true> = {
   "/api/health": true,
@@ -163,7 +165,9 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     async (request, reply) => {
       const command = request.body.command.trim();
       if (!command || command.length > MAX_COMMAND_LENGTH || CONTROL_CHARS.test(command)) {
-        return reply.code(400).send({ error: `Commands must be 1-${MAX_COMMAND_LENGTH} printable characters` });
+        return reply
+          .code(400)
+          .send({ error: `Commands must be 1-${MAX_COMMAND_LENGTH} printable characters` });
       }
       if (!["starting", "running"].includes(monitor.status.state)) {
         return reply.code(409).send({ error: "The server is not running" });

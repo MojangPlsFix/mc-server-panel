@@ -48,7 +48,10 @@ describe("groupLogLines", () => {
       "[25Oct2026 08:00:01.000] [main/INFO] [x/]: next",
     ]);
     expect(entries).toHaveLength(2);
-    expect(entries[0]?.continuation).toEqual(["java.lang.IllegalStateException: nope", "\tat a.b.C.d(C.java:1)"]);
+    expect(entries[0]?.continuation).toEqual([
+      "java.lang.IllegalStateException: nope",
+      "\tat a.b.C.d(C.java:1)",
+    ]);
     expect(entries[1]?.message).toBe("next");
   });
 

@@ -75,7 +75,8 @@ export class CpuMeter {
 export async function readHostInfo(procRoot = "/proc"): Promise<HostInfo | null> {
   try {
     const meminfo = await readFile(`${procRoot}/meminfo`, "utf8");
-    const kb = (key: string) => Number(new RegExp(`^${key}:\\s+(\\d+) kB`, "m").exec(meminfo)?.[1] ?? NaN) * 1024;
+    const kb = (key: string) =>
+      Number(new RegExp(`^${key}:\\s+(\\d+) kB`, "m").exec(meminfo)?.[1] ?? NaN) * 1024;
     const memTotalBytes = kb("MemTotal");
     const memAvailableBytes = kb("MemAvailable");
     if (!Number.isFinite(memTotalBytes) || !Number.isFinite(memAvailableBytes)) return null;

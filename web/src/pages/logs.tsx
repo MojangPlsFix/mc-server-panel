@@ -4,7 +4,7 @@ import {
   FileTextIcon,
   MagnifyingGlassIcon,
 } from "@phosphor-icons/react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { atLeast, groupLogLines, type LogLevel } from "@shared/log-line";
 import type { LogContent, LogFileInfo } from "@shared/types";
@@ -23,45 +23,55 @@ const LINE_LIMITS = [2000, 10_000, 50_000];
 
 export function LogsPage() {
   const [files, setFiles] = useState<LogFileInfo[] | null>(null);
+  const [filesError, setFilesError] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
-  const [content, setContent] = useState<LogContent | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<{
+    key: string;
+    content: LogContent | null;
+    error: string | null;
+  } | null>(null);
+  const [reloads, setReloads] = useState(0);
   const [query, setQuery] = useState("");
   const [level, setLevel] = useState<LogLevel | "all">("all");
   const [limit, setLimit] = useState(LINE_LIMITS[0] ?? 2000);
 
-  const loadFiles = useCallback(async () => {
-    try {
-      const list = await api<LogFileInfo[]>("/api/logs");
-      setFiles(list);
-      setSelected((current) => (current && list.some((f) => f.name === current) ? current : (list[0]?.name ?? null)));
-    } catch (err) {
-      setError((err as Error).message);
-      setFiles([]);
-    }
-  }, []);
-
-  const loadContent = useCallback(async (name: string, lines: number) => {
-    setLoading(true);
-    setError(null);
-    try {
-      setContent(await api<LogContent>(`/api/logs/${encodeURIComponent(name)}?lines=${lines}`));
-    } catch (err) {
-      setError((err as Error).message);
-      setContent(null);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  // Identifies the content currently wanted; a reply for an older key is ignored.
+  const key = selected ? `${selected}|${limit}|${reloads}` : null;
+  const loading = key !== null && result?.key !== key;
+  const content = result?.content ?? null;
+  const error = filesError ?? result?.error ?? null;
 
   useEffect(() => {
-    void loadFiles();
-  }, [loadFiles]);
+    let current = true;
+    api<LogFileInfo[]>("/api/logs").then(
+      (list) => {
+        if (!current) return;
+        setFiles(list);
+        setFilesError(null);
+        setSelected((name) => (name && list.some((f) => f.name === name) ? name : (list[0]?.name ?? null)));
+      },
+      (err: Error) => {
+        if (!current) return;
+        setFiles([]);
+        setFilesError(err.message);
+      },
+    );
+    return () => {
+      current = false;
+    };
+  }, [reloads]);
 
   useEffect(() => {
-    if (selected) void loadContent(selected, limit);
-  }, [selected, limit, loadContent]);
+    if (!key || !selected) return;
+    let current = true;
+    api<LogContent>(`/api/logs/${encodeURIComponent(selected)}?lines=${limit}`).then(
+      (loaded) => current && setResult({ key, content: loaded, error: null }),
+      (err: Error) => current && setResult({ key, content: null, error: err.message }),
+    );
+    return () => {
+      current = false;
+    };
+  }, [key, selected, limit]);
 
   const entries = useMemo(() => {
     const all = groupLogLines(content?.lines ?? []);
@@ -164,10 +174,7 @@ export function LogsPage() {
               className="size-8"
               aria-label="Reload"
               disabled={!selected || loading}
-              onClick={() => {
-                void loadFiles();
-                if (selected) void loadContent(selected, limit);
-              }}
+              onClick={() => setReloads((n) => n + 1)}
             >
               <ArrowClockwiseIcon className={cn(loading && "animate-spin")} />
             </Button>

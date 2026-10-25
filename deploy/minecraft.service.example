@@ -1,0 +1,19 @@
+# Example systemd unit for the Minecraft server itself, matching control.type = "systemd".
+# The server runs inside a tmux session so the panel (and you) can use its console.
+# Adjust User, WorkingDirectory and the start command (here: a Forge run.sh) to your setup.
+[Unit]
+Description=Minecraft server
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=forking
+User=minecraft
+WorkingDirectory=/opt/minecraft
+ExecStart=/usr/bin/tmux new-session -d -s minecraft -c /opt/minecraft /bin/bash /opt/minecraft/run.sh nogui
+ExecStop=/usr/bin/tmux send-keys -t minecraft stop Enter
+ExecStop=/bin/sh -c 'while /usr/bin/tmux has-session -t minecraft 2>/dev/null; do sleep 2; done'
+TimeoutStopSec=300
+
+[Install]
+WantedBy=multi-user.target

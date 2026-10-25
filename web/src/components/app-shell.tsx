@@ -72,7 +72,12 @@ export function AppShell({ name, onLogout }: { name: string; onLogout: () => voi
             {theme === "dark" ? <SunIcon /> : <MoonIcon />}
             {theme === "dark" ? "Light mode" : "Dark mode"}
           </Button>
-          <Button variant="ghost" size="sm" className="justify-start text-muted-foreground" onClick={onLogout}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="justify-start text-muted-foreground"
+            onClick={onLogout}
+          >
             <SignOutIcon />
             Log out
           </Button>

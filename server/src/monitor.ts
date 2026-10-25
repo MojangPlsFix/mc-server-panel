@@ -86,7 +86,8 @@ export class StatusMonitor extends EventEmitter<MonitorEvents> {
     await this.refresh();
     const { state } = this.snapshot;
     if (this.pending) throw new ControlError(`Still busy with "${this.pending.action}"`);
-    if (!ALLOWED[action].includes(state)) throw new ControlError(`Cannot ${action} while the server is ${state}`);
+    if (!ALLOWED[action].includes(state))
+      throw new ControlError(`Cannot ${action} while the server is ${state}`);
     await this.deps.control[action]();
     this.pending = { action, since: this.clock(), sawDown: false };
     await this.refresh();
@@ -94,7 +95,7 @@ export class StatusMonitor extends EventEmitter<MonitorEvents> {
 
   private async collect() {
     let unit: UnitStatus | null = null;
-    let error: string | null = null;
+    let error: string | null;
     try {
       unit = await this.deps.control.status();
       error = unit.detail;
@@ -149,27 +150,20 @@ export class StatusMonitor extends EventEmitter<MonitorEvents> {
     if (!pending) return null;
     if (state !== "running") pending.sawDown = true;
     const age = this.clock() - pending.since;
-    let done = false;
-    let error: string | null = null;
-    if (state === "failed") {
-      done = true;
-    } else if (pending.action === "stop") {
-      done = state === "stopped";
-    } else if (pending.action === "start") {
-      done = state === "running";
-      if (state === "stopped" && age > 15_000) {
-        done = true;
-        error = "The server stopped right after starting - check the log";
-      }
-    } else {
-      done = state === "running" && pending.sawDown;
+    const diedOnStart = pending.action === "start" && state === "stopped" && age > 15_000;
+    const reached: Record<ServerAction, boolean> = {
+      start: state === "running",
+      stop: state === "stopped",
+      restart: state === "running" && pending.sawDown,
+    };
+    const timedOut = age > PENDING_TIMEOUT_MS;
+    if (state !== "failed" && !reached[pending.action] && !diedOnStart && !timedOut) return null;
+    this.pending = null;
+    if (diedOnStart) return "The server stopped right after starting - check the log";
+    if (timedOut && state !== "failed" && !reached[pending.action]) {
+      return `"${pending.action}" did not finish within ${PENDING_TIMEOUT_MS / 60_000} minutes`;
     }
-    if (!done && age > PENDING_TIMEOUT_MS) {
-      done = true;
-      error = `"${pending.action}" did not finish within ${PENDING_TIMEOUT_MS / 60_000} minutes`;
-    }
-    if (done) this.pending = null;
-    return error;
+    return null;
   }
 
   private async processInfo(): Promise<ProcessInfo | null> {

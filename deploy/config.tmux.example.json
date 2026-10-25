@@ -1,0 +1,15 @@
+{
+  "listen": { "host": "0.0.0.0", "port": 8080 },
+  "server": {
+    "name": "My Minecraft Server",
+    "directory": "/opt/minecraft",
+    "tmuxSession": "minecraft",
+    "address": { "host": "127.0.0.1", "port": 25565 },
+    "control": {
+      "type": "tmux",
+      "startCommand": "java -Xms4G -Xmx4G -jar server.jar nogui",
+      "stopCommand": "stop",
+      "stopTimeoutSeconds": 120
+    }
+  }
+}

@@ -20,10 +20,15 @@ export function App() {
 
   useEffect(() => {
     api<{ authenticated: boolean; name: string }>("/api/auth/session")
-      .then(({ authenticated, name }) => setSession({ state: authenticated ? "signed-in" : "signed-out", name }))
+      .then(({ authenticated, name }) =>
+        setSession({ state: authenticated ? "signed-in" : "signed-out", name }),
+      )
       .catch(() => setSession({ state: "signed-out", name: "Minecraft" }));
     const onUnauthorized = () =>
-      setSession((current) => ({ state: "signed-out", name: "name" in current ? current.name : "Minecraft" }));
+      setSession((current) => ({
+        state: "signed-out",
+        name: "name" in current ? current.name : "Minecraft",
+      }));
     window.addEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
     return () => window.removeEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
   }, []);
@@ -48,7 +53,10 @@ export function App() {
             </div>
           </div>
         ) : session.state === "signed-out" ? (
-          <LoginPage name={session.name} onLoggedIn={() => setSession({ state: "signed-in", name: session.name })} />
+          <LoginPage
+            name={session.name}
+            onLoggedIn={() => setSession({ state: "signed-in", name: session.name })}
+          />
         ) : (
           <LiveProvider>
             <BrowserRouter>

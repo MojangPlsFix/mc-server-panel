@@ -80,7 +80,9 @@ export function LogView({ entries, follow = false, query = "", empty, className 
               )}
             >
               <span className="text-muted-foreground/55 tabular-nums">{entry.time ?? ""}</span>
-              <span className={cn("text-[11px] font-medium uppercase", entry.level && LEVEL_CLASS[entry.level])}>
+              <span
+                className={cn("text-[11px] font-medium uppercase", entry.level && LEVEL_CLASS[entry.level])}
+              >
                 {entry.level ?? ""}
               </span>
               <span className="whitespace-pre-wrap break-words">

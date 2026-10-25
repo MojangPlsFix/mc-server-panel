@@ -116,7 +116,17 @@ function StatusPanel({ status }: { status: StatusSnapshot }) {
   );
 }
 
-function Meter({ label, value, detail, fraction }: { label: string; value: string; detail: string; fraction: number | null }) {
+function Meter({
+  label,
+  value,
+  detail,
+  fraction,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  fraction: number | null;
+}) {
   return (
     <div className="min-w-0 py-4 first:pt-0 last:pb-0 sm:py-0">
       <div className="flex items-baseline justify-between gap-3">

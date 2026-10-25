@@ -104,7 +104,11 @@ export function ConsolePage() {
           entries={entries}
           follow
           className="flex-1"
-          empty={filter === "all" ? "No output yet. Start the server to see its log here." : "Nothing at this level."}
+          empty={
+            filter === "all"
+              ? "No output yet. Start the server to see its log here."
+              : "Nothing at this level."
+          }
         />
         <form onSubmit={submit} className="flex items-center gap-2 border-t bg-card p-2">
           <span className="pl-2 font-mono text-sm text-live select-none" aria-hidden>
