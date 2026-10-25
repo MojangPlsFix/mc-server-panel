@@ -88,6 +88,8 @@ export class StatusMonitor extends EventEmitter<MonitorEvents> {
     if (this.pending) throw new ControlError(`Still busy with "${this.pending.action}"`);
     if (!ALLOWED[action].includes(state))
       throw new ControlError(`Cannot ${action} while the server is ${state}`);
+    // The server is about to write a new log; until it does, the old Done line means nothing.
+    if (action !== "stop") this.logReadyTrusted = false;
     await this.deps.control[action]();
     this.pending = { action, since: this.clock(), sawDown: false };
     await this.refresh();
@@ -104,7 +106,8 @@ export class StatusMonitor extends EventEmitter<MonitorEvents> {
     }
 
     const alive = unit !== null && unit.activity !== "inactive" && unit.activity !== "failed";
-    if (!alive) this.logReadyTrusted = false;
+    // Any non-active phase (stopping, starting, stopped) invalidates the Done line until a new log starts.
+    if (unit?.activity !== "active") this.logReadyTrusted = false;
     const [ping, processInfo, host] = await Promise.all([
       unit?.activity === "active" ? this.deps.ping().catch(() => null) : null,
       alive ? this.processInfo() : null,

@@ -72,6 +72,31 @@ describe("StatusMonitor", () => {
     expect(monitor.status.state).toBe("running");
   });
 
+  it("does not trust the previous run's Done line during a restart", async () => {
+    const { world, tailer, monitor } = setup();
+    world.activity = "active";
+    tailer.ready = true; // panel started while the server was already running
+    await monitor.refresh();
+    expect(monitor.status.state).toBe("running");
+
+    // systemd restart: deactivating -> activating -> active, never "inactive" between polls,
+    // while the old latest.log (with its Done line) has not been rotated yet.
+    await monitor.perform("restart");
+    world.activity = "deactivating";
+    await monitor.refresh();
+    world.activity = "active";
+    await monitor.refresh();
+    expect(monitor.status).toMatchObject({ state: "starting", pending: "restart" });
+
+    tailer.emit("reset");
+    tailer.ready = false;
+    await monitor.refresh();
+    expect(monitor.status.state).toBe("starting");
+    tailer.ready = true; // new run logged Done
+    await monitor.refresh();
+    expect(monitor.status).toMatchObject({ state: "running", pending: null });
+  });
+
   it("keeps a start pending until the server runs", async () => {
     const { world, monitor } = setup();
     await monitor.perform("start");
